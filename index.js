@@ -16,10 +16,23 @@ const displayHelp = () => {
     console.log('To quit the application enter \'quit\'');
 };
 
-async function getLinks(params) {
-    params = params || 'limit=5';
+function toParamsString(options) {
+    return Object.entries(options)
+        .filter(prop => options.hasOwnProperty(prop[0]))
+        .map(prop => `${prop[0]}=${prop[1]}`)
+        .join('&');
+}
+
+async function getLinks(options) {
+    if (!options.limit) {
+        options.limit = 5;
+    }
+
+    const paramsString = toParamsString(options);
+
     const headers = await getAccessHeaders();
-    const response = await axios.get('https://oauth.reddit.com/r/webdev/hot?' + params, {
+
+    const response = await axios.get(`https://oauth.reddit.com/r/webdev/hot?${paramsString}`, {
         headers: {
             'Authorization': headers['Authorization'],
             'User-Agent': headers['User-Agent']
@@ -28,7 +41,7 @@ async function getLinks(params) {
 
     return response.data;
 }
-const listThreads = async(params = 'limit=5') => {
+const listThreads = async(params = {}) => {
     const response = await getLinks(params);
     const links = response.data.children;
     links.forEach((link) => console.log(`[${link.data.id}]: ${link.data.title}`));
@@ -36,10 +49,18 @@ const listThreads = async(params = 'limit=5') => {
         const cmd = await getAnswer('r/webdev>');
         switch (cmd) {
             case 'next':
-                await listThreads(`limit=5&after=${response.data.after}`);
+                const nextParams = {
+                    limit: params.limit,
+                    after: response.data.after
+                };
+                await listThreads(nextParams);
                 break;
             case 'prev':
-                await listThreads(`limit=5&before=${response.data.before}`);
+                const prevParams = {
+                    limit: params.limit,
+                    before: response.data.before
+                };
+                await listThreads(prevParams);
                 break;
             case 'q':
                 return 'ok';
@@ -71,8 +92,15 @@ const prompt = async() => {
         return Promise.resolve;
     } else if (answer === 'help') {
         displayHelp();
-    } else if (answer === 'list') {
-        await listThreads();
+    } else if (answer.startsWith('list')) {
+        const limit = answer.split(' ')[1];
+        if (limit) {
+            await listThreads({
+                limit
+            });
+        } else {
+            await listThreads({});
+        }
     }
     await prompt();
 };
