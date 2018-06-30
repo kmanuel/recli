@@ -12,6 +12,7 @@
   "dependencies": {
     "axios": "^0.18.0",
     "btoa": "^1.2.1",
-    "dotenv": "^6.0.0"
+    "dotenv": "^6.0.0",
+    "raw.js": "^0.6.0"
   }
 }

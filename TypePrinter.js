@@ -13,7 +13,7 @@ const printComment = (data) => {
 [${data.id}] ${data.author}
 ${data.body}
 `
-    );
+    )
 };
 
 const shortPrintLink = (data) => {
@@ -25,7 +25,6 @@ const shortPrintComment = (data) => {
 };
 
 class TypePrinter {
-
     printDetail(listingEntry) {
         if (listingEntry.kind === 't3') {
             printLink(listingEntry.data);
