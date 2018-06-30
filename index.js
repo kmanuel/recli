@@ -23,6 +23,60 @@ function toParamsString(options) {
         .join('&');
 }
 
+async function readLink(link) {
+    const headers = await getAccessHeaders();
+
+    const response = await axios.get(`https://oauth.reddit.com/comments/${link}?limit=5`, {
+        headers: {
+            'Authorization': headers['Authorization'],
+            'User-Agent': headers['User-Agent']
+        }
+    });
+
+    let mainPost = response.data.filter(d => d.data.dist === 1).map(d => d.data.children)[0];
+    let mainData = mainPost
+        .map(c => c.data)
+    for (let i = 0; i < mainData.length; i++) {
+        const {author, title, selftext} = mainData[i];
+        console.log('---------------------------------');
+        console.log('---------------------------------');
+        console.log(author);
+        console.log(title);
+        console.log(selftext);
+        console.log('---------------------------------');
+        console.log('---------------------------------');
+        console.log('');
+    }
+
+    let comments = response.data.filter(d => d.data.dist === null).map(d => d.data.children)[0];
+    let commentsData = comments
+        .map(c => c.data)
+        .filter(d => d.author);
+
+
+    while (true) {
+        const cmd = await getAnswer('');
+
+        if (cmd === 'comments') {
+            for (let i = 0; i < commentsData.length; i++) {
+                const {author, body, id} = commentsData[i];
+                console.log(`[${id}] ${author}: ${body.substring(0, 50)}...`);
+            }
+        } else if (cmd.startsWith('show')) {
+            const commentId = cmd.split(' ')[1];
+            commentsData.filter(c => c.id == commentId)
+                .forEach(c => {
+                    console.log(c.author);
+                    console.log(c.body);
+                });
+        } else if (cmd === 'q') {
+            return Promise.resolve;
+        } else {
+            console.log(`unknown command ${cmd}`)
+        }
+    }
+}
+
 async function getLinks(options) {
     if (!options.limit) {
         options.limit = 5;
@@ -41,39 +95,37 @@ async function getLinks(options) {
 
     return response.data;
 }
+
 const listThreads = async(params = {}) => {
     const response = await getLinks(params);
     const links = response.data.children;
     links.forEach((link) => console.log(`[${link.data.id}]: ${link.data.title}`));
     while (true) {
         const cmd = await getAnswer('r/webdev>');
-        switch (cmd) {
-            case 'next':
-                const nextParams = {
-                    limit: params.limit,
-                    after: response.data.after
-                };
-                await listThreads(nextParams);
-                break;
-            case 'prev':
-                const prevParams = {
-                    limit: params.limit,
-                    before: response.data.before
-                };
-                await listThreads(prevParams);
-                break;
-            case 'q':
-                return 'ok';
-            case 'help': {
-                console.log('available commands:');
-                console.log('\t\'next\' shows the next entries');
-                console.log('\t\'prev\' shows the previous entries');
-                console.log('\t\'q\' exits from this command');
-                break;
-            }
-            default:
-                console.log(`unknown command ${cmd} type 'help' for a list of available commands`);
-                break;
+        if (cmd.startsWith('next')) {
+            const nextParams = {
+                limit: params.limit,
+                after: response.data.after
+            };
+            await listThreads(nextParams);
+        } else if (cmd.startsWith('prev')) {
+            const prevParams = {
+                limit: params.limit,
+                before: response.data.before
+            };
+            await listThreads(prevParams);
+        } else if (cmd.startsWith('read')) {
+            const linkId = cmd.split(' ')[1];
+            await readLink(linkId);
+        } else if (cmd === 'q') {
+            return 'ok';
+        } else if (cmd === 'help') {
+            console.log('available commands:');
+            console.log('\t\'next\' shows the next entries');
+            console.log('\t\'prev\' shows the previous entries');
+            console.log('\t\'q\' exits from this command');
+        } else {
+            console.log(`unknown command ${cmd} type 'help' for a list of available commands`);
         }
     }
 };
@@ -106,3 +158,5 @@ const prompt = async() => {
 };
 
 prompt();
+
+// readLink('8rauwf');
