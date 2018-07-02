@@ -23,8 +23,6 @@ function initRaw() {
     reddit.auth({"username": REDDIT_USERNAME, "password": REDDIT_PASSWORD}, (err, response) => {
         if (err) {
             console.log('unable to authenticate user: ' + err);
-        } else {
-            console.log('authenticated');
         }
     });
 
@@ -49,6 +47,9 @@ const state = {
     data: null,
     inSubreddit: function () {
         return this.data.children.every(c => c.kind === 't3');
+    },
+    inLink: function () {
+        return this.place === 'link';
     }
 };
 
@@ -79,12 +80,27 @@ const showLink = (id) => {
         link.data.children.forEach(printer.printDetail);
         res.data.children.forEach(printer.printDetail);
         state.data = res.data;
+        state.place = 'link';
+        state.placename = id;
     })
 };
 
-const open = (id) => {
+const showComment = (id) => {
+    reddit.comments({
+        ...defaultOptions,
+        comment: id
+    }, (err, res) => {
+        res.place = 'comment';
+        res.placename = id;
+        res.data = res;
+    });
+};
+
+const show = (id) => {
     if (state.inSubreddit()) {
         showLink(id);
+    } else if (state.inLink()) {
+        showComment(id);
     } else {
         console.log(`open ${id} NOT in subreddit`);
     }
@@ -95,15 +111,17 @@ const more = () => {
     console.log('more');
 };
 
-rl.on('line', (line) => {
+rl.setPrompt('recli>');
+rl.prompt();
+
+const handleAction = (line) => {
     if (line.startsWith('r/')) {
         switchToSubreddit(line);
+        rl.setPrompt(`${state.placename}>`);
     } else if (line.startsWith('hot')) {
         showHot(line);
     } else if (line.startsWith('show')) {
-        showData();
-    } else if (line.startsWith('open')) {
-        open(line.split(' ')[1]);
+        show(line.split(' ')[1]);
     } else if (line.startsWith('more')) {
         more();
     } else if (line.startsWith('state')) {
@@ -111,8 +129,12 @@ rl.on('line', (line) => {
     } else if (line === 'exit') {
         rl.close();
         process.exit(0);
-    }
-     else {
+    } else {
         console.log('unknown command');
     }
+}
+
+rl.on('line', (line) => {
+    handleAction(line);
+    rl.prompt();
 });

@@ -8,12 +8,11 @@ ${data.selftext}
     );
 };
 
-const printComment = (data) => {
-    console.log(`
-[${data.id}] ${data.author}
-${data.body}
-`
-    )
+const printComment = (data, depthLevel = 0) => {
+    console.log(`${' '.repeat(depthLevel)}[${data.id}] ${data.author}`);
+    console.log(`${' '.repeat(depthLevel)}${data.body}`);
+
+    data.replies.data.children.forEach(reply => onPrintDetail(reply, depthLevel + 1));
 };
 
 const shortPrintLink = (data) => {
@@ -24,13 +23,19 @@ const shortPrintComment = (data) => {
     console.log(`[${data.id}]-${data.author}: ${data.body.substring(0, 100)}...`);
 };
 
+const onPrintDetail = (entry, depthLevel = 0) => {
+    if (entry.kind === 't3') {
+        printLink(entry.data);
+    } else if (entry.kind === 't1') {
+        printComment(entry.data, depthLevel + 1);
+    } else if (entry.kind === 'more') {
+        console.log('encountered more');
+    }
+};
+
 class TypePrinter {
-    printDetail(listingEntry) {
-        if (listingEntry.kind === 't3') {
-            printLink(listingEntry.data);
-        } else if (listingEntry.kind === 't1') {
-            printComment(listingEntry.data);
-        }
+    printDetail(listingEntry, depthLevel = 0) {
+        onPrintDetail(listingEntry, depthLevel);
     }
 
     printShort(listingEntry) {
